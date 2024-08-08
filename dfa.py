@@ -1,18 +1,17 @@
 from collections.abc import Callable
-from nfa import NFA
 
 
 class DFA:
-    symbols: list[str]
+    symbols: set[str]
     initial_state: int
-    accepting_states: list[int]
-    delta: Callable[[int, str], int]
+    accepting_states: set[int]
+    delta: Callable[[int, str], int] | Callable[[set[int], str], set[int]]
 
     def __init__(
         self,
-        symbols: list[str],
+        symbols: set[str],
         initial_state: int,
-        accepting_states: list[int],
+        accepting_states: set[int],
         delta: Callable[[int, str], int],
     ):
         self.symbols = symbols
@@ -25,30 +24,38 @@ class DFA:
             f"DFA: Symbols: {self.symbols}, initial state: {self.initial_state}, accepting: {self.accepting_states}, delta: {self.delta}"
         )
 
+    def check(self, input):
+        s = self.run(input)
+        # s is iterable if the current dfa was converted from an nfa
+        if hasattr(s, "__iter__"):
+            return len(set.intersection(s, self.accepting_states)) > 0
+        else:
+            return s in self.accepting_states
+
     def run(self, input):
+        if input == "":
+            s = self.delta(self.initial_state, "")
+            if s == -1:
+                return self.initial_state
+            else:
+                return s
         cur_state = self.initial_state
         for c in input:
             cur_state = self.delta(cur_state, c)
             if cur_state == -1:
-                return False
-        return cur_state in self.accepting_states
+                return -1
+        return cur_state
 
+    def toNFA(self):
+        from nfa import NFA
 
-def delta(state: int, input: str):
-    if input == "a":
-        if state == 1:
-            return 2
-        else:
-            return state
-    elif input == "b":
-        if state == 0:
-            return 1
-        else:
-            return state
-    else:
-        return -1
+        def delta_wrapper(state: int, symbol: str) -> set[int]:
+            s = self.delta(state, symbol) # returns either a set or an int
+            if hasattr(s, "__iter__"):
+                return s
+            else:
+                return {s}
 
-
-dfa = DFA(["a", "b"], 0, [0, 1], delta)
-
-print(dfa.run("bbbb"))
+        return NFA(
+            self.symbols, self.initial_state, self.accepting_states, delta_wrapper
+        )
