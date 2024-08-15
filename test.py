@@ -219,3 +219,5 @@ assert dfa.check("1111000") == True
 assert dfa.check("010101") == False
 assert dfa.check("111111") == True
 assert dfa.check("111110") == False
+
+print("All tests pass")

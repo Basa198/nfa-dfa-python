@@ -21,20 +21,21 @@ class NFA:
 
     def print(self):
         print(
-            f"NFA: Symbols: {self.symbols}, initial states: {self.initial_states}, accepting: {self.accepting_states}, delta: {self.delta}"
+            f"NFA: Symbols: {self.symbols}, initial states: {self.initial_state}, accepting: {self.accepting_states}, delta: {self.delta}"
         )
 
     def epsilon_closure(self, states: set[int]):
         """Returns a list of states reachable through epsilon transitions."""
         q = list(states)
+        res = states.copy()
         while len(q) > 0:
             cur_state = q.pop(0)
             new_states = self.delta(cur_state, "")
             for i in new_states:
-                if i not in states:
+                if i not in res:
                     q.append(i)
-                    states.add(i)
-        return states
+                    res.add(i)
+        return res
 
     def check(self, input):
         last_states = self.run(input)
@@ -57,9 +58,7 @@ class NFA:
             # state MIGHT an iterable
             # it's not iterable on the first iteration in DFA.run() when the input is initial state
             # it's iterable on subsequent iterations in DFA.run()
-            if hasattr(state, "__iter__"):
-                state = self.epsilon_closure(state)
-            else:
+            if not hasattr(state, "__iter__"):
                 state = self.epsilon_closure({state})
 
             new_state = set()
