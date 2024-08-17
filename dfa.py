@@ -22,8 +22,7 @@ class DFA:
     ):
         self.initial_state = initial_state
         self.accepting_states = accepting_states
-        self.delta = delta  # return -1 for unknown transition
-
+        self.delta = delta
         self._transition = _transition
 
     def check(self, input):
