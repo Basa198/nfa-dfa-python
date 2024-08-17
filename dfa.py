@@ -1,61 +1,48 @@
 from collections.abc import Callable
 
 
+def _transition(delta: Callable[[int, str], set[int]], states: set[int], symbol: str):
+    new_states = set()
+    for state in states:
+        new_states.update(delta(state, symbol))
+    return new_states
+
+
 class DFA:
-    symbols: set[str]
+    _transition: Callable[[Callable[[int, str], set[int]], set[int], str], set[int]]
     initial_state: int
     accepting_states: set[int]
-    delta: Callable[[int, str], int] | Callable[[set[int], str], set[int]]
+    delta: Callable[[int, str], set[int]]
 
     def __init__(
         self,
-        symbols: set[str],
         initial_state: int,
         accepting_states: set[int],
-        delta: Callable[[int, str], int],
+        delta: Callable[[int, str], set[int]],
     ):
-        self.symbols = symbols
         self.initial_state = initial_state
         self.accepting_states = accepting_states
         self.delta = delta  # return -1 for unknown transition
 
-    def print(self):
-        print(
-            f"DFA: Symbols: {self.symbols}, initial state: {self.initial_state}, accepting: {self.accepting_states}, delta: {self.delta}"
-        )
+        self._transition = _transition
 
     def check(self, input):
         s = self.run(input)
-        # s is iterable if the current dfa was converted from an nfa
-        if hasattr(s, "__iter__"):
-            return len(set.intersection(s, self.accepting_states)) > 0
-        else:
-            return s in self.accepting_states
+        return len(set.intersection(s, self.accepting_states)) > 0
 
     def run(self, input):
+        cur_state = set([self.initial_state])
         if input == "":
-            s = self.delta(self.initial_state, "")
-            if s == -1:
-                return self.initial_state
+            cur_state = self._transition(self.delta, cur_state, "")
+            if len(cur_state) == 0:
+                return set([self.initial_state])
             else:
-                return s
-        cur_state = self.initial_state
+                return cur_state
         for c in input:
-            cur_state = self.delta(cur_state, c)
-            if cur_state == -1:
-                return -1
+            cur_state = self._transition(self.delta, cur_state, c)
         return cur_state
 
     def toNFA(self):
         from nfa import NFA
 
-        def delta_wrapper(state: int, symbol: str) -> set[int]:
-            s = self.delta(state, symbol) # returns either a set or an int
-            if hasattr(s, "__iter__"):
-                return s
-            else:
-                return {s}
-
-        return NFA(
-            self.symbols, self.initial_state, self.accepting_states, delta_wrapper
-        )
+        return NFA(self.initial_state, self.accepting_states, self.delta)

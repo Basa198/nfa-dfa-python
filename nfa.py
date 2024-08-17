@@ -2,27 +2,19 @@ from collections.abc import Callable
 
 
 class NFA:
-    symbols: set[str]
     initial_state: int
     accepting_states: set[int]
     delta: Callable[[int, str], set[int]]
 
     def __init__(
         self,
-        symbols: set[str],
         initial_state: int,
         accepting_states: set[int],
         delta: Callable[[int, str], set[int]],
     ):
-        self.symbols = symbols
         self.accepting_states = accepting_states
         self.delta = delta
         self.initial_state = initial_state
-
-    def print(self):
-        print(
-            f"NFA: Symbols: {self.symbols}, initial states: {self.initial_state}, accepting: {self.accepting_states}, delta: {self.delta}"
-        )
 
     def epsilon_closure(self, states: set[int]):
         """Returns a list of states reachable through epsilon transitions."""
@@ -51,21 +43,20 @@ class NFA:
             cur_states = res
         return self.epsilon_closure(cur_states)
 
+    def _nfa_transition(
+        self, delta: Callable[[int, str], set[int]], states: set[int], symbol: str
+    ):
+        # Only the first time this is called. Only state is the init state
+        if len(states) == 1:
+            states = self.epsilon_closure(states)
+        new_states = set()
+        for state in states:
+            new_states.update(delta(state, symbol))
+        return self.epsilon_closure(new_states)
+
     def toDFA(self):
         from dfa import DFA
 
-        def delta_wrapper(state, symbol):
-            # state MIGHT an iterable
-            # it's not iterable on the first iteration in DFA.run() when the input is initial state
-            # it's iterable on subsequent iterations in DFA.run()
-            if not hasattr(state, "__iter__"):
-                state = self.epsilon_closure({state})
-
-            new_state = set()
-            for i in state:
-                new_state.update(self.delta(i, symbol))
-            return self.epsilon_closure(new_state)
-
-        return DFA(
-            self.symbols, self.initial_state, self.accepting_states, delta_wrapper
-        )
+        dfa = DFA(self.initial_state, self.accepting_states, self.delta)
+        dfa._transition = self._nfa_transition
+        return dfa
